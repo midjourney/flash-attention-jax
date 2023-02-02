@@ -166,7 +166,10 @@ def flash_attention_backward(res, do):
         do_chunk = lax.dynamic_slice(do, (chunk_idx, batch, heads, 0), slice_sizes = (chunk_sizes, batch, heads, do.shape[-1]))
 
         dq_chunk, dk_chunk, dv_chunk = _query_chunk_flash_attention_backward(q_chunk, k, v, key_mask, o_chunk, do_chunk, lse_chunk)
-        return (chunk_idx + chunk_sizes, dk + dk_chunk, dv + dv_chunk), dq_chunk
+        dk += jnp.asarray(dk_chunk, dk.dtype)
+        dv += jnp.asarray(dv_chunk, dv.dtype)
+        chunk_idx += jnp.asarray(chunk_sizes, chunk_idx.dtype)
+        return (chunk_idx, dk, dv), dq_chunk
 
     (_, dk, dv), dq = lax.scan(chunk_scanner, init = (0, dk, dv), xs = None, length = math.ceil(q_len / Q_CHUNK_SIZE))
 
